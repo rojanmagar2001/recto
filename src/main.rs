@@ -1,9 +1,11 @@
 use std::io::{self, Read};
 
-fn main() {
-    crossterm::terminal::enable_raw_mode().unwrap();
+use anyhow::Context;
+
+fn main() -> anyhow::Result<()> {
+    crossterm::terminal::enable_raw_mode().context("couldn't enable raw mode")?;
     for b in io::stdin().bytes() {
-        let b = b.unwrap();
+        let b = b.context("couldn't get the input byte")?;
         let ch = b as char;
 
         if ch.is_control() {
@@ -13,8 +15,10 @@ fn main() {
         }
 
         if ch == 'q' {
-            crossterm::terminal::disable_raw_mode().unwrap();
+            crossterm::terminal::disable_raw_mode().context("couldn't disable raw mode")?;
             break;
         }
     }
+
+    Ok(())
 }
