@@ -6,7 +6,7 @@ use crossterm::event::{
 
 use anyhow::Context;
 
-use crate::terminal::Terminal;
+use crate::terminal::{Position, Size, Terminal};
 
 pub struct Editor {
     should_quit: bool,
@@ -25,7 +25,7 @@ impl Editor {
     }
 
     pub fn draw_rows() -> anyhow::Result<()> {
-        let height = Terminal::size()?.1;
+        let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
             Terminal::print("~")?;
@@ -77,7 +77,7 @@ impl Editor {
             Terminal::print("Goodbye.\r\n")?;
         } else {
             Self::draw_rows()?;
-            Terminal::move_cursor_to(0, 0)?;
+            Terminal::move_cursor_to(Position::new(0, 0))?;
         }
 
         Terminal::show_cursor()?;

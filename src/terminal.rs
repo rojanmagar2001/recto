@@ -2,11 +2,27 @@ use std::io::{stdout, Write};
 
 use anyhow::Context;
 use crossterm::{
-    cursor::{MoveTo, Show},
+    cursor::{Hide, MoveTo, Show},
     queue,
     style::Print,
     terminal::{self, Clear, ClearType},
 };
+
+pub struct Size {
+    pub height: u16,
+    pub width: u16,
+}
+
+pub struct Position {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl Position {
+    pub fn new(x: u16, y: u16) -> Self {
+        Self { x, y }
+    }
+}
 
 pub struct Terminal {}
 
@@ -14,7 +30,7 @@ impl Terminal {
     pub fn initialize() -> anyhow::Result<()> {
         terminal::enable_raw_mode().context("couldn't enable raw mode")?;
         Self::clear_screen()?;
-        Self::move_cursor_to(0, 0)?;
+        Self::move_cursor_to(Position::new(0, 0))?;
         Self::execute()?;
 
         Ok(())
@@ -27,7 +43,13 @@ impl Terminal {
     }
 
     pub fn clear_screen() -> anyhow::Result<()> {
-        queue!(stdout(), Clear(ClearType::All)).context("failed to clean the screen!")?;
+        queue!(stdout(), Clear(ClearType::All)).context("failed to clear the screen!")?;
+
+        Ok(())
+    }
+
+    pub fn clear_line() -> anyhow::Result<()> {
+        queue!(stdout(), Clear(ClearType::CurrentLine)).context("failed to clear current line")?;
 
         Ok(())
     }
@@ -38,19 +60,30 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn hide_cursor() -> anyhow::Result<()> {
+        queue!(stdout(), Hide).context("failed to hide cursor")?;
+
+        Ok(())
+    }
+
     pub fn print(txt: &str) -> anyhow::Result<()> {
         queue!(stdout(), Print(txt))?;
 
         Ok(())
     }
 
-    pub fn move_cursor_to(x: u16, y: u16) -> anyhow::Result<()> {
-        queue!(stdout(), MoveTo(x, y)).context("failed to move the cursor")?;
+    pub fn move_cursor_to(position: Position) -> anyhow::Result<()> {
+        queue!(stdout(), MoveTo(position.x, position.y)).context("failed to move the cursor")?;
         Ok(())
     }
 
-    pub fn size() -> anyhow::Result<(u16, u16)> {
-        terminal::size().context("failed to get terminal size")
+    pub fn size() -> anyhow::Result<Size> {
+        let size = terminal::size().context("failed to get terminal size")?;
+
+        Ok(Size {
+            width: size.0,
+            height: size.1,
+        })
     }
 
     pub fn execute() -> anyhow::Result<()> {
