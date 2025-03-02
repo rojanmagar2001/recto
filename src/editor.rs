@@ -61,13 +61,13 @@ impl Editor {
             }
 
             let event = crossterm::event::read().context("couldn't read the keypress event")?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(&event);
         }
 
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> anyhow::Result<()> {
+    fn evaluate_event(&mut self, event: &Event) {
         if let Key(KeyEvent {
             code,
             modifiers,
@@ -82,8 +82,6 @@ impl Editor {
                 _ => (),
             }
         }
-
-        Ok(())
     }
 
     fn refresh_screen(&self) -> anyhow::Result<()> {
