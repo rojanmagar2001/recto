@@ -17,17 +17,13 @@ impl Editor {
 
         loop {
             if let Key(event) = event::read().context("couldn't read the keypress event")? {
-                println!("{:?} \r", event);
+                println!("{event:?} \r");
 
-                match event.code {
-                    Char(c) => {
-                        if c == 'q' {
-                            break;
-                        }
+                if let Char(c) = event.code {
+                    if c == 'q' {
+                        break;
                     }
-                    _ => (),
                 }
-            } else {
             }
         }
 
