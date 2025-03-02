@@ -1,4 +1,7 @@
-use std::io::{self, Read};
+use crossterm::{
+    event::{self, Event::Key, KeyCode::Char},
+    terminal,
+};
 
 use anyhow::Context;
 
@@ -10,22 +13,25 @@ impl Editor {
     }
 
     pub fn run(&self) -> anyhow::Result<()> {
-        crossterm::terminal::enable_raw_mode().context("couldn't enable raw mode")?;
-        for b in io::stdin().bytes() {
-            let b = b.context("couldn't get the input byte")?;
-            let ch = b as char;
+        terminal::enable_raw_mode().context("couldn't enable raw mode")?;
 
-            if ch.is_control() {
-                println!("Binary: {0:08b} ASCII: {0:#03} \r", b);
+        loop {
+            if let Key(event) = event::read().context("couldn't read the keypress event")? {
+                println!("{:?} \r", event);
+
+                match event.code {
+                    Char(c) => {
+                        if c == 'q' {
+                            break;
+                        }
+                    }
+                    _ => (),
+                }
             } else {
-                println!("Binary: {0:08b} ASCII: {0:#03} Character: {1:#?}\r", b, ch);
-            }
-
-            if ch == 'q' {
-                crossterm::terminal::disable_raw_mode().context("couldn't disable raw mode")?;
-                break;
             }
         }
+
+        terminal::disable_raw_mode().context("couldn't disable raw mode")?;
 
         Ok(())
     }
