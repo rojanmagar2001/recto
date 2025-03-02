@@ -1,4 +1,7 @@
-use std::io::{stdout, Write};
+use std::{
+    fmt::Display,
+    io::{stdout, Write},
+};
 
 use anyhow::Context;
 use crossterm::{
@@ -6,6 +9,7 @@ use crossterm::{
     queue,
     style::Print,
     terminal::{self, Clear, ClearType},
+    Command,
 };
 
 pub struct Size {
@@ -43,37 +47,38 @@ impl Terminal {
     }
 
     pub fn clear_screen() -> anyhow::Result<()> {
-        queue!(stdout(), Clear(ClearType::All)).context("failed to clear the screen!")?;
+        Self::queue_command(Clear(ClearType::All)).context("failed to clear the screen!")?;
 
         Ok(())
     }
 
     pub fn clear_line() -> anyhow::Result<()> {
-        queue!(stdout(), Clear(ClearType::CurrentLine)).context("failed to clear current line")?;
+        Self::queue_command(Clear(ClearType::CurrentLine))
+            .context("failed to clear current line")?;
 
         Ok(())
     }
 
     pub fn show_cursor() -> anyhow::Result<()> {
-        queue!(stdout(), Show).context("failed to show cursor")?;
+        Self::queue_command(Show).context("failed to show cursor")?;
 
         Ok(())
     }
 
     pub fn hide_cursor() -> anyhow::Result<()> {
-        queue!(stdout(), Hide).context("failed to hide cursor")?;
+        Self::queue_command(Hide).context("failed to hide cursor")?;
 
         Ok(())
     }
 
-    pub fn print(txt: &str) -> anyhow::Result<()> {
+    pub fn print<T: Display>(txt: T) -> anyhow::Result<()> {
         queue!(stdout(), Print(txt))?;
 
         Ok(())
     }
 
     pub fn move_cursor_to(position: Position) -> anyhow::Result<()> {
-        queue!(stdout(), MoveTo(position.x, position.y)).context("failed to move the cursor")?;
+        Self::queue_command(MoveTo(position.x, position.y)).context("failed to move the cursor")?;
         Ok(())
     }
 
@@ -88,6 +93,12 @@ impl Terminal {
 
     pub fn execute() -> anyhow::Result<()> {
         stdout().flush().context("failed to flush the queue")?;
+        Ok(())
+    }
+
+    pub fn queue_command<T: Command>(command: T) -> anyhow::Result<()> {
+        queue!(stdout(), command)?;
+
         Ok(())
     }
 }
