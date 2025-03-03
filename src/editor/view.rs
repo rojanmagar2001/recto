@@ -13,11 +13,18 @@ pub struct View {
 }
 
 impl View {
-    pub fn render() -> anyhow::Result<()> {
+    pub fn render(&self) -> anyhow::Result<()> {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
             Terminal::clear_line()?;
+
+            if let Some(line) = self.buffer.lines.get(current_row) {
+                Terminal::print(line)?;
+                Terminal::print("\r\n")?;
+
+                continue;
+            }
 
             if current_row == height / 3 {
                 Self::draw_welcome_message()?;

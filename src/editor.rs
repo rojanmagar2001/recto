@@ -43,7 +43,7 @@ impl Editor {
             }
 
             let event = crossterm::event::read().context("couldn't read the keypress event")?;
-            self.evaluate_event(&event);
+            self.evaluate_event(&event)?;
         }
 
         Ok(())
@@ -123,7 +123,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
-            View::render()?;
+            self.view.render()?;
             Terminal::move_caret_to(Position::new(self.location.x, self.location.y))?;
         }
 
