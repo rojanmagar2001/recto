@@ -14,6 +14,16 @@ pub struct View {
 
 impl View {
     pub fn render(&self) -> anyhow::Result<()> {
+        if self.buffer.is_empty() {
+            self.render_welcome_screen()?;
+        } else {
+            self.render_buffer()?;
+        }
+
+        Ok(())
+    }
+
+    fn render_buffer(&self) -> anyhow::Result<()> {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
@@ -22,9 +32,23 @@ impl View {
             if let Some(line) = self.buffer.lines.get(current_row) {
                 Terminal::print(line)?;
                 Terminal::print("\r\n")?;
+            } else {
+                Self::draw_empty_row()?;
 
-                continue;
+                if current_row.saturating_add(1) < height {
+                    Terminal::print("\r\n")?;
+                }
             }
+        }
+
+        Ok(())
+    }
+
+    fn render_welcome_screen(&self) -> anyhow::Result<()> {
+        let Size { height, .. } = Terminal::size()?;
+
+        for current_row in 0..height {
+            Terminal::clear_line()?;
 
             if current_row == height / 3 {
                 Self::draw_welcome_message()?;
@@ -60,6 +84,12 @@ impl View {
         welcome_message.truncate(width);
 
         Terminal::print(&welcome_message)?;
+
+        Ok(())
+    }
+
+    pub fn load(&mut self, file_name: &str) -> anyhow::Result<()> {
+        self.buffer.load(file_name)?;
 
         Ok(())
     }

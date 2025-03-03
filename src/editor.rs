@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, env};
 
 use crossterm::event::{
     Event::{self, Key},
@@ -30,8 +30,19 @@ pub struct Editor {
 impl Editor {
     pub fn run(&mut self) -> anyhow::Result<()> {
         Terminal::initialize()?;
+        self.handle_args()?;
         self.repl()?;
         Terminal::terminate()?;
+        Ok(())
+    }
+
+    fn handle_args(&mut self) -> anyhow::Result<()> {
+        let args = env::args().collect::<Vec<String>>();
+
+        if let Some(file) = args.get(1) {
+            self.view.load(file)?;
+        }
+
         Ok(())
     }
 
