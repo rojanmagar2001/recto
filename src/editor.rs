@@ -62,16 +62,6 @@ impl Editor {
         Ok(())
     }
 
-    // fn handle_args(&mut self) -> anyhow::Result<()> {
-    //     let args = env::args().collect::<Vec<String>>();
-    //
-    //     if let Some(file) = args.get(1) {
-    //         self.view.load(file)?;
-    //     }
-    //
-    //     Ok(())
-    // }
-
     fn repl(&mut self) -> anyhow::Result<()> {
         loop {
             self.refresh_screen()?;

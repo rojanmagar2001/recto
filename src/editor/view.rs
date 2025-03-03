@@ -1,3 +1,5 @@
+use std::io::{stdout, Write};
+
 use buffer::Buffer;
 
 use super::terminal::{Size, Terminal};
@@ -51,8 +53,6 @@ impl View {
         let Size { height, width } = self.size;
 
         for current_row in 0..height {
-            Terminal::clear_line()?;
-
             if let Some(line) = self.buffer.lines.get(current_row) {
                 let truncated_line = if line.len() > width {
                     &line[0..width]
@@ -73,8 +73,6 @@ impl View {
         let Size { height, .. } = self.size;
 
         for current_row in 0..height {
-            Terminal::clear_line()?;
-
             if current_row == height / 3 {
                 let message = self.build_welcome_message();
 
