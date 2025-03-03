@@ -1,7 +1,11 @@
-use std::{cmp::min, env};
+use std::{
+    cmp::min,
+    env,
+    panic::{set_hook, take_hook},
+};
 
 use crossterm::event::{
-    Event::{self, Key},
+    Event::{self},
     KeyCode::{self, Char},
     KeyEvent, KeyModifiers,
 };
@@ -21,6 +25,7 @@ pub struct Location {
     y: usize,
 }
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
@@ -28,68 +33,96 @@ pub struct Editor {
 }
 
 impl Editor {
+    pub fn new() -> anyhow::Result<Self> {
+        let current_hook = take_hook();
+        set_hook(Box::new(move |panic_info| {
+            Terminal::terminate().unwrap();
+            current_hook(panic_info);
+        }));
+
+        let mut view = View::default();
+
+        let args = env::args().collect::<Vec<String>>();
+
+        if let Some(file) = args.get(1) {
+            view.load(file)?;
+        }
+
+        Ok(Self {
+            should_quit: false,
+            location: Location::default(),
+            view,
+        })
+    }
+
     pub fn run(&mut self) -> anyhow::Result<()> {
         Terminal::initialize()?;
-        self.handle_args()?;
         self.repl()?;
         Terminal::terminate()?;
         Ok(())
     }
 
-    fn handle_args(&mut self) -> anyhow::Result<()> {
-        let args = env::args().collect::<Vec<String>>();
-
-        if let Some(file) = args.get(1) {
-            self.view.load(file)?;
-        }
-
-        Ok(())
-    }
+    // fn handle_args(&mut self) -> anyhow::Result<()> {
+    //     let args = env::args().collect::<Vec<String>>();
+    //
+    //     if let Some(file) = args.get(1) {
+    //         self.view.load(file)?;
+    //     }
+    //
+    //     Ok(())
+    // }
 
     fn repl(&mut self) -> anyhow::Result<()> {
         loop {
             self.refresh_screen()?;
+
             if self.should_quit {
                 break;
             }
 
             let event = crossterm::event::read().context("couldn't read the keypress event")?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(event)?;
         }
 
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> anyhow::Result<()> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind: _,
-            state: _,
-        }) = event
-        {
-            match code {
-                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+    fn evaluate_event(&mut self, event: Event) -> anyhow::Result<()> {
+        match event {
+            Event::Key(KeyEvent {
+                code, modifiers, ..
+            }) => match (code, modifiers) {
+                (Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
-                KeyCode::Up
-                | KeyCode::Down
-                | KeyCode::Left
-                | KeyCode::Right
-                | KeyCode::PageUp
-                | KeyCode::PageDown
-                | KeyCode::End
-                | KeyCode::Home => {
-                    self.move_point(&code)?;
+                (
+                    KeyCode::Up
+                    | KeyCode::Down
+                    | KeyCode::Left
+                    | KeyCode::Right
+                    | KeyCode::PageUp
+                    | KeyCode::PageDown
+                    | KeyCode::End
+                    | KeyCode::Home,
+                    _,
+                ) => {
+                    self.move_point(code)?;
                 }
                 _ => {}
+            },
+            Event::Resize(width_u16, height_u16) => {
+                self.view.resize(Size {
+                    width: width_u16 as usize,
+                    height: height_u16 as usize,
+                });
             }
+            _ => {}
         }
 
         Ok(())
     }
 
-    fn move_point(&mut self, key_code: &KeyCode) -> anyhow::Result<()> {
+    fn move_point(&mut self, key_code: KeyCode) -> anyhow::Result<()> {
         let Location { mut x, mut y } = self.location;
         let Size { width, height } = Terminal::size()?;
 
@@ -126,7 +159,7 @@ impl Editor {
         Ok(())
     }
 
-    fn refresh_screen(&self) -> anyhow::Result<()> {
+    fn refresh_screen(&mut self) -> anyhow::Result<()> {
         Terminal::hide_caret()?;
         Terminal::move_caret_to(Position::default())?;
 
@@ -142,15 +175,5 @@ impl Editor {
         Terminal::execute()?;
 
         Ok(())
-    }
-}
-
-impl Default for Editor {
-    fn default() -> Self {
-        Self {
-            should_quit: false,
-            view: View::default(),
-            location: Location::default(),
-        }
     }
 }

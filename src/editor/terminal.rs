@@ -5,10 +5,11 @@ use crossterm::{
     cursor::{Hide, MoveTo, Show},
     queue,
     style::Print,
-    terminal::{self, Clear, ClearType},
+    terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     Command,
 };
 
+#[derive(Default)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
@@ -31,16 +32,30 @@ pub struct Terminal {}
 impl Terminal {
     pub fn initialize() -> anyhow::Result<()> {
         terminal::enable_raw_mode().context("couldn't enable raw mode")?;
+        Self::enter_alternate_screen()?;
         Self::clear_screen()?;
-        Self::move_caret_to(Position::default())?;
         Self::execute()?;
 
         Ok(())
     }
 
     pub fn terminate() -> anyhow::Result<()> {
+        Self::leave_alternate_screen()?;
+        Self::show_caret()?;
         Self::execute()?;
         terminal::disable_raw_mode().context("couldn't disable raw mode")?;
+        Ok(())
+    }
+
+    fn enter_alternate_screen() -> anyhow::Result<()> {
+        Self::queue_command(EnterAlternateScreen)?;
+
+        Ok(())
+    }
+
+    fn leave_alternate_screen() -> anyhow::Result<()> {
+        Self::queue_command(LeaveAlternateScreen)?;
+
         Ok(())
     }
 
@@ -69,15 +84,26 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_row(row: usize, line_text: &str) -> anyhow::Result<()> {
+        Self::move_caret_to(Position::new(0, row))?;
+        Self::clear_line()?;
+        Self::print(line_text)?;
+
+        Ok(())
+    }
+
     pub fn print(txt: &str) -> anyhow::Result<()> {
-        queue!(stdout(), Print(txt))?;
+        Self::queue_command(Print(txt))?;
 
         Ok(())
     }
 
     pub fn move_caret_to(position: Position) -> anyhow::Result<()> {
-        Self::queue_command(MoveTo(position.col as u16, position.row as u16))
-            .context("failed to move the cursor")?;
+        Self::queue_command(MoveTo(
+            u16::try_from(position.col)?,
+            u16::try_from(position.row)?,
+        ))
+        .context("failed to move the cursor")?;
         Ok(())
     }
 
