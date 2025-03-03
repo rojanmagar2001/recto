@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    io::{stdout, Write},
-};
+use std::io::{stdout, Write};
 
 use anyhow::Context;
 use crossterm::{
@@ -13,19 +10,19 @@ use crossterm::{
 };
 
 pub struct Size {
-    pub height: u16,
-    pub width: u16,
+    pub height: usize,
+    pub width: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Position {
-    pub x: u16,
-    pub y: u16,
+    pub col: usize,
+    pub row: usize,
 }
 
 impl Position {
-    pub fn new(x: u16, y: u16) -> Self {
-        Self { x, y }
+    pub fn new(col: usize, row: usize) -> Self {
+        Self { col, row }
     }
 }
 
@@ -35,7 +32,7 @@ impl Terminal {
     pub fn initialize() -> anyhow::Result<()> {
         terminal::enable_raw_mode().context("couldn't enable raw mode")?;
         Self::clear_screen()?;
-        Self::move_cursor_to(Position::new(0, 0))?;
+        Self::move_caret_to(Position::default())?;
         Self::execute()?;
 
         Ok(())
@@ -60,26 +57,27 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn show_cursor() -> anyhow::Result<()> {
+    pub fn show_caret() -> anyhow::Result<()> {
         Self::queue_command(Show).context("failed to show cursor")?;
 
         Ok(())
     }
 
-    pub fn hide_cursor() -> anyhow::Result<()> {
+    pub fn hide_caret() -> anyhow::Result<()> {
         Self::queue_command(Hide).context("failed to hide cursor")?;
 
         Ok(())
     }
 
-    pub fn print<T: Display>(txt: T) -> anyhow::Result<()> {
+    pub fn print(txt: &str) -> anyhow::Result<()> {
         queue!(stdout(), Print(txt))?;
 
         Ok(())
     }
 
-    pub fn move_cursor_to(position: Position) -> anyhow::Result<()> {
-        Self::queue_command(MoveTo(position.x, position.y)).context("failed to move the cursor")?;
+    pub fn move_caret_to(position: Position) -> anyhow::Result<()> {
+        Self::queue_command(MoveTo(position.col as u16, position.row as u16))
+            .context("failed to move the cursor")?;
         Ok(())
     }
 
@@ -87,8 +85,8 @@ impl Terminal {
         let size = terminal::size().context("failed to get terminal size")?;
 
         Ok(Size {
-            width: size.0,
-            height: size.1,
+            width: size.0 as usize,
+            height: size.1 as usize,
         })
     }
 

@@ -3,7 +3,6 @@
 use editor::Editor;
 
 mod editor;
-mod terminal;
 
 fn main() -> anyhow::Result<()> {
     let mut editor = Editor::default();
