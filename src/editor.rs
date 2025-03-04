@@ -1,35 +1,25 @@
 use std::{
-    cmp::min,
     env,
     panic::{set_hook, take_hook},
 };
 
-use crossterm::event::{
-    Event::{self},
-    KeyCode::{self, Char},
-    KeyEvent, KeyModifiers,
-};
+use crossterm::event::Event::{self};
 
+mod editorcommand;
 mod terminal;
 mod view;
 
 use anyhow::Context;
+use editorcommand::{Direction, EditorCommand};
 use terminal::Size;
-use view::View;
+use view::{location::Location, View};
 
 use crate::editor::terminal::{Position, Terminal};
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Location {
-    x: usize,
-    y: usize,
-}
 
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
-    location: Location,
 }
 
 impl Editor {
@@ -50,7 +40,6 @@ impl Editor {
 
         Ok(Self {
             should_quit: false,
-            location: Location::default(),
             view,
         })
     }
@@ -78,73 +67,56 @@ impl Editor {
     }
 
     fn evaluate_event(&mut self, event: Event) -> anyhow::Result<()> {
-        match event {
-            Event::Key(KeyEvent {
-                code, modifiers, ..
-            }) => match (code, modifiers) {
-                (Char('q'), KeyModifiers::CONTROL) => {
+        if let Ok(command) = EditorCommand::try_from(event) {
+            match command {
+                EditorCommand::Quit => {
                     self.should_quit = true;
                 }
-                (
-                    KeyCode::Up
-                    | KeyCode::Down
-                    | KeyCode::Left
-                    | KeyCode::Right
-                    | KeyCode::PageUp
-                    | KeyCode::PageDown
-                    | KeyCode::End
-                    | KeyCode::Home,
-                    _,
-                ) => {
-                    self.move_point(code)?;
+                EditorCommand::Resize(size) => {
+                    self.view.resize(size);
                 }
-                _ => {}
-            },
-            Event::Resize(width_u16, height_u16) => {
-                self.view.resize(Size {
-                    width: width_u16 as usize,
-                    height: height_u16 as usize,
-                });
+                EditorCommand::Move(direction) => {
+                    self.move_point(direction)?;
+                }
             }
-            _ => {}
         }
 
         Ok(())
     }
 
-    fn move_point(&mut self, key_code: KeyCode) -> anyhow::Result<()> {
-        let Location { mut x, mut y } = self.location;
+    fn move_point(&mut self, direction: Direction) -> anyhow::Result<()> {
+        let Location { mut x, mut y } = self.view.location;
         let Size { width, height } = Terminal::size()?;
 
-        match key_code {
-            KeyCode::Up => {
+        match direction {
+            Direction::Up => {
                 y = y.saturating_sub(1);
             }
-            KeyCode::Down => {
-                y = min(height.saturating_sub(1), y.saturating_add(1));
+            Direction::Down => {
+                y = y.saturating_add(1);
             }
-            KeyCode::Left => {
+            Direction::Left => {
                 x = x.saturating_sub(1);
             }
-            KeyCode::Right => {
-                x = min(width.saturating_sub(1), x.saturating_add(1));
+            Direction::Right => {
+                x = x.saturating_add(1);
             }
-            KeyCode::PageUp => {
+            Direction::PageUp => {
                 y = 0;
             }
-            KeyCode::PageDown => {
+            Direction::PageDown => {
                 y = height.saturating_sub(1);
             }
-            KeyCode::End => {
+            Direction::End => {
                 x = 0;
             }
-            KeyCode::Home => {
+            Direction::Home => {
                 x = width.saturating_sub(1);
             }
-            _ => {}
         }
 
-        self.location = Location { x, y };
+        self.view.location = Location { x, y };
+        self.view.scroll_location_into_view();
 
         Ok(())
     }
@@ -158,7 +130,7 @@ impl Editor {
             Terminal::print("Goodbye.\r\n")?;
         } else {
             self.view.render()?;
-            Terminal::move_caret_to(Position::new(self.location.x, self.location.y))?;
+            Terminal::move_caret_to(self.view.get_postion())?;
         }
 
         Terminal::show_caret()?;
