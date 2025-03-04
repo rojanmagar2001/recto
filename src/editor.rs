@@ -10,9 +10,8 @@ mod terminal;
 mod view;
 
 use anyhow::Context;
-use editorcommand::{Direction, EditorCommand};
-use terminal::Size;
-use view::{location::Location, View};
+use editorcommand::EditorCommand;
+use view::View;
 
 use crate::editor::terminal::{Position, Terminal};
 
@@ -76,47 +75,10 @@ impl Editor {
                     self.view.resize(size);
                 }
                 EditorCommand::Move(direction) => {
-                    self.move_point(direction)?;
+                    self.view.move_point(direction)?;
                 }
             }
         }
-
-        Ok(())
-    }
-
-    fn move_point(&mut self, direction: Direction) -> anyhow::Result<()> {
-        let Location { mut x, mut y } = self.view.location;
-        let Size { width, height } = Terminal::size()?;
-
-        match direction {
-            Direction::Up => {
-                y = y.saturating_sub(1);
-            }
-            Direction::Down => {
-                y = y.saturating_add(1);
-            }
-            Direction::Left => {
-                x = x.saturating_sub(1);
-            }
-            Direction::Right => {
-                x = x.saturating_add(1);
-            }
-            Direction::PageUp => {
-                y = 0;
-            }
-            Direction::PageDown => {
-                y = height.saturating_sub(1);
-            }
-            Direction::End => {
-                x = 0;
-            }
-            Direction::Home => {
-                x = width.saturating_sub(1);
-            }
-        }
-
-        self.view.location = Location { x, y };
-        self.view.scroll_location_into_view();
 
         Ok(())
     }

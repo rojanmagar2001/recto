@@ -1,7 +1,11 @@
 use buffer::Buffer;
+use line::Line;
 use location::Location;
 
-use super::terminal::{Position, Size, Terminal};
+use super::{
+    editorcommand::Direction,
+    terminal::{Position, Size, Terminal},
+};
 
 mod buffer;
 pub mod line;
@@ -55,6 +59,54 @@ impl View {
 
     pub fn get_postion(&self) -> Position {
         self.location.subtract(&self.scroll_offset).into()
+    }
+
+    pub fn move_point(&mut self, direction: Direction) -> anyhow::Result<()> {
+        let Location { mut x, mut y } = self.location;
+        let Size { height, .. } = Terminal::size()?;
+
+        match direction {
+            Direction::Up => {
+                y = y.saturating_sub(1);
+            }
+            Direction::Down => {
+                y = y.saturating_add(1);
+            }
+            Direction::Left => {
+                if x > 0 {
+                    x -= 1;
+                } else if y > 0 {
+                    y -= 1;
+                    x = self.buffer.lines.get(y).map_or(0, Line::len);
+                }
+            }
+            Direction::Right => {
+                let width = self.buffer.lines.get(y).map_or(0, Line::len);
+                if x < width {
+                    x += 1;
+                } else {
+                    y = y.saturating_add(1);
+                    x = 0;
+                }
+            }
+            Direction::PageUp => {
+                y = y.saturating_sub(height).saturating_add(1);
+            }
+            Direction::PageDown => {
+                y = y.saturating_add(height).saturating_sub(1);
+            }
+            Direction::End => {
+                x = self.buffer.lines.get(y).map_or(0, Line::len);
+            }
+            Direction::Home => {
+                x = 0;
+            }
+        }
+
+        self.location = Location { x, y };
+        self.scroll_location_into_view();
+
+        Ok(())
     }
 
     pub fn scroll_location_into_view(&mut self) {
