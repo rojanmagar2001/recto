@@ -22,6 +22,15 @@ pub struct Position {
 }
 
 impl Position {
+    pub const fn saturating_sub(&mut self, other: Self) -> Self {
+        Self {
+            col: self.col.saturating_sub(other.col),
+            row: self.row.saturating_sub(other.row),
+        }
+    }
+}
+
+impl Position {
     pub fn new(col: usize, row: usize) -> Self {
         Self { col, row }
     }

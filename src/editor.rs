@@ -92,7 +92,7 @@ impl Editor {
             Terminal::print("Goodbye.\r\n")?;
         } else {
             self.view.render()?;
-            Terminal::move_caret_to(self.view.get_postion())?;
+            Terminal::move_caret_to(self.view.caret_postion())?;
         }
 
         Terminal::show_caret()?;
